@@ -205,14 +205,29 @@ install_version(){
         return 1
     fi
     
-    echo "Compilando Python versão: '$version' (isso pode demorar)..."
+    echo "Compilando Python versão: '$version' (isso pode demorar vários minutos)..."
     cd "$extracted_dir" || return 1
-    ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations
-    make
-    make install
     
-    if [ $? -ne 0 ]; then
-        echo "Erro: Falha na compilação!"
+    # if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations > /dev/null 2> configure-errors.log; then
+    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> configure-errors.log; then
+        echo "Erro: Falha na configuração! Verifique configure-errors.log"
+        rm -rf "$temp_dir"
+        rm -rf "$DIR_PYTHON_VERSIONS/$version"
+        return 1
+    fi
+    
+    # Compilação paralelizada e silenciosa
+    cores=$(nproc)
+    if ! make -j"$cores" > /dev/null 2> make-errors.log; then
+        echo "Erro: Falha na compilação! Verifique make-errors.log"
+        rm -rf "$temp_dir"
+        rm -rf "$DIR_PYTHON_VERSIONS/$version"
+        return 1
+    fi
+    
+    # Instalação silenciosa
+    if ! make install > /dev/null 2> install-errors.log; then
+        echo "Erro: Falha na instalação! Verifique install-errors.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
