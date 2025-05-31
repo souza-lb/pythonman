@@ -1,0 +1,301 @@
+#!/bin/bash
+
+# pythonman - Python Version Manager
+
+# Autor: Leonardo Bruno
+# Contato: souzalb@proton.me
+# Versão: 1.0
+# Data: 01/06/2025
+
+# Pasta raiz pythonman
+DIR_PYTHONMAN="$HOME/.pythonman"
+
+# Pasta raiz versões python
+DIR_PYTHON_VERSIONS="$DIR_PYTHONMAN/python_versions"
+
+# Link simbólico para versão corrente
+CURRENT_PYTHON="$DIR_PYTHON_VERSIONS/current"
+
+# Arquivo configuração de ambiente
+FILE_ENV_PYTHON="$DIR_PYTHONMAN/python_env"
+
+# Exibe ajuda
+show_help(){
+    echo "Uso: pythonman [comando]"
+    echo ""
+    echo "Comandos disponíveis:"
+    echo ""
+    echo "install [url/arquivo] - Instala nova versão"
+    echo "remove  [versão]      - Remove versão"
+    echo "list                  - Lista versões disponíveis"
+    echo "use     [versão]      - Define uma versão padrão"
+    echo "disable               - Desativa versão padrão"
+    echo "help                  - Exibe ajuda"
+    return 0
+}
+
+# Verifica se versão já está instalada
+version_exists(){
+    local version="${1:-}"
+    
+    if [ -d  "$DIR_PYTHON_VERSIONS/$version" ]; then
+        echo "yes"
+    else
+        echo "no"
+    fi
+    return 0
+}
+
+# Retorna a versão definida como padrão
+get_current_version(){
+    local version
+    
+    if [ -L "$CURRENT_PYTHON" ]; then
+        local full_path version        
+        full_path=$(readlink -f "$CURRENT_PYTHON")
+        version=$(basename "$full_path")
+        echo "$version"
+    else
+        echo "none"
+    fi
+    return 0
+}
+
+# Lista todas as versões disponíveis e destaca a versão ativa com "-->"
+list_versions(){
+    local versions current_version
+    
+    versions=$(find "$DIR_PYTHON_VERSIONS" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort -V)
+    current_version=$(get_current_version)
+    
+    if [ -z "$versions" ]; then
+        echo "Nenhuma versão Python disponível!"
+        echo "Execute 'pythonman install' para instalar uma nova versão!"
+        return 0
+    fi
+    
+    echo "Versões Python disponíveis:"
+    while IFS= read -r version; do
+        if [ "$version" = "$current_version" ]; then
+            echo "--> $version"
+        else
+            echo "    $version"
+        fi
+    done <<< "$versions"
+    return 0
+}
+
+# Ativa uma versão
+use_version(){
+    local current_version version="${1:-}"
+    
+    if [ -z "$version" ]; then
+        echo "Erro: Versão não informada!"
+        show_help
+        return 1
+    fi
+    
+    if [ "$(version_exists "$version")" = "no" ]; then
+        echo "Erro: Versão não encontrada!"
+        list_versions
+        return 1
+    fi
+    
+    current_version=$(get_current_version)
+    if [ "$current_version" = "$version" ]; then
+        echo "A versão '$version' já está ativa"
+        return 0
+    fi
+    
+    rm -f "$CURRENT_PYTHON"
+    ln -s "$DIR_PYTHON_VERSIONS/$version" "$CURRENT_PYTHON"
+    
+    if [ ! -f "$FILE_ENV_PYTHON" ]; then
+        echo "export PYTHON_HOME=\"$CURRENT_PYTHON\"" >> "$FILE_ENV_PYTHON"
+        echo 'export PATH="$PYTHON_HOME/bin:$PATH"' >> "$FILE_ENV_PYTHON"
+    fi
+    
+    echo "Versão $version definida como padrão!"
+    echo "Execute 'source ~/.bashrc' para aplicar as mudanças!"
+    return 0
+}
+
+# Desabilita versão ativa
+disable_version(){
+    local current_version=$(get_current_version)
+    
+    if [ "$current_version" = "none" ]; then
+        echo "Nenhuma versão Python em uso no momento!"
+        return 0
+    fi
+    
+    rm -f "$CURRENT_PYTHON"
+    rm -f "$FILE_ENV_PYTHON"
+    
+    echo "Versão $current_version desativada com sucesso!"
+    echo "Execute 'source ~/.bashrc' para aplicar as alterações!"
+    return 0
+}
+
+# Instala uma nova versão
+install_version(){
+    local source file_name temp_dir temp_file version extracted_dir
+    
+    source=${1:-}
+    
+    if [ -z "$source" ]; then
+        echo "Erro: [url/arquivo] não fornecido!"
+        return 1
+    fi
+    
+    file_name=$(basename "$source")
+    version=$(echo "$file_name" | grep -oP 'Python-\K[0-9]+\.[0-9]+\.[0-9a-zA-Z]+')
+    
+    if [ -z "$version" ]; then
+        echo "Erro: Não foi possível detectar a versão automaticamente!"
+        echo "Exemplos válidos: 3.13.3, 3.14.0b2"
+        read -p "Informe a versão manualmente: " version < /dev/tty
+    fi
+    
+    if [ -z "$version" ]; then
+        echo "Erro: Versão necessária!"
+        return 1
+    fi
+
+    if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9a-zA-Z]+$ ]]; then
+        echo "Erro: Formato inválido! Use X.Y.Z[identificador]"
+        return 1
+    fi
+    
+    if [ "$(version_exists "$version")" = "yes" ]; then
+        echo "Erro: A versão '$version' já está instalada!"
+        return 1
+    fi
+    
+    temp_dir=$(mktemp -d /tmp/python-XXXXX)
+    temp_file=$(basename "$source")
+    
+    if [[ "$source" =~ ^https?:// ]]; then
+        echo "Efetuando o download via url..."
+        if ! wget -q --show-progress "$source" -O "$temp_dir/$temp_file"; then
+            echo "Erro: Falha no download!"
+            return 1
+        fi
+    else
+        if [ -f "$source" ]; then
+            echo "Usando arquivo local..."
+            cp "$source" "$temp_dir/$temp_file"
+        else
+            echo "Erro: Arquivo não localizado!"
+            return 1
+        fi
+    fi
+    
+    echo "Extraindo arquivo..."
+    if ! tar -xJf "$temp_dir/$temp_file" -C "$temp_dir"; then
+        echo "Erro: Falha ao extrair o arquivo!"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    extracted_dir=$(find "$temp_dir" -mindepth 1 -maxdepth 1 -type d -name "Python-$version*" | head -n 1)
+    if [ -z "$extracted_dir" ]; then
+        echo "Erro: Diretório extraído não encontrado!"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    echo "Compilando Python versão: '$version' (isso pode demorar)..."
+    cd "$extracted_dir" || return 1
+    ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations
+    make
+    make install
+    
+    if [ $? -ne 0 ]; then
+        echo "Erro: Falha na compilação!"
+        rm -rf "$temp_dir"
+        rm -rf "$DIR_PYTHON_VERSIONS/$version"
+        return 1
+    fi
+    
+    rm -rf "$temp_dir"
+    
+    echo "Python versão '$version' instalada com sucesso!"
+    echo "Execute: 'pythonman use $version' para utilizar essa versão!"
+}
+
+# Remove uma versão
+remove_version(){
+    local version current_version response
+    
+    version=${1:-}
+    current_version=$(get_current_version)
+    
+    if [ -z "$version" ]; then
+        echo "Erro: Informe uma versão para remoção!"
+        show_help
+        return 1
+    fi
+    
+    if [ "$(version_exists "$version")" = "no" ]; then
+        echo "Erro: Versão $version não encontrada!"
+        list_versions
+        return 1
+    fi
+    
+    current_version=$(get_current_version)
+    if [ "$current_version" = "$version" ]; then
+        echo "A versão '$version' está em uso!"
+        echo "Execute: 'pythonman disable' antes de tentar remover esta versão!"
+        return 1
+    fi
+    
+    read -p "Deseja realmente remover a versão $version? [s/N]: " response < /dev/tty
+    if [[ ! "$response" =~ ^[Ss]$ ]]; then
+        echo "Remoção cancelada."
+        return 0
+    fi
+    
+    read -p "Digite o número da versão para confirmar a remoção: " confirm_version < /dev/tty
+    if [ "$confirm_version" != "$version" ]; then
+        echo "A versão digitada não confere! Remoção cancelada."
+        return 0
+    fi
+    
+    echo "Removendo versao: $version..."
+    rm -rf "$DIR_PYTHON_VERSIONS/$version"
+    
+    echo "Versão $version removida com sucesso!"
+    return 0    
+}
+
+# Controle principal de execução
+main(){
+    case ${1:-} in
+        "install")
+            install_version "${2:-}"
+            ;;
+        "remove")
+            remove_version "${2:-}"
+            ;;
+        "list")
+            list_versions "${2:-}"
+            ;;
+        "use")
+            use_version "${2:-}"
+            ;;
+        "disable")
+            disable_version
+            ;;
+        "help"|"")
+            show_help
+            ;;
+        *)
+             echo "Erro: Comando inválido! '${1:-}'"
+             show_help
+             return 1
+             ;;
+    esac     
+}
+
+main "$@"
