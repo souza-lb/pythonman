@@ -1,0 +1,178 @@
+#!/bin/bash
+
+# pythonman - Python Version Manager - desinstalador
+
+# Autor: Leonardo Bruno
+# Contato: souzalb@proton.me
+# Versão: 1.0
+# Data: 01/06/2025
+
+# Nome do arquivo alvo
+TARGET="pythonman"
+
+# Pasta raiz pythonman
+DIR_PYTHONMAN="$HOME/.pythonman"
+
+# Pasta raiz versões python
+DIR_PYTHON_VERSIONS="$DIR_PYTHONMAN/python_versions"
+
+# Link para versão em uso python
+CURRENT_PYTHON="$DIR_PYTHON_VERSIONS/current"
+
+# Arquivo .bashrc
+FILE_BASHRC="$HOME/.bashrc"
+
+# Arquivo de ambiente python
+PYTHON_ENV_FILE="$DIR_PYTHONMAN/python_env"
+
+# Mensagem inicial
+echo ""
+echo "--------------------------------------------"
+echo "     Desinstalação $TARGET versão 1.0       "
+echo "--------------------------------------------"
+echo ""
+echo "1 - Verificar instalação"
+echo "2 - Remover entradas do bashrc"
+echo "3 - Remover arquivos principais"
+echo "4 - Remover versões python (Opcional)"
+echo "5 - Finalizar desinstalação"
+echo ""
+
+# Verifica se instalação existe
+check_pythonman_exists() {
+    if [ ! -d "$DIR_PYTHONMAN" ]; then
+        echo "Erro: O pythonman não está instalado."
+        echo "Pasta não encontrada: $DIR_PYTHONMAN"
+        echo ""
+        echo "Nenhuma ação será realizada."
+        exit 0
+    fi
+    echo "Instalação localizada: $DIR_PYTHONMAN"
+    return 0
+}
+
+# Confirmação do usuário
+confirm_uninstall() {
+    read -p "Deseja realmente desinstalar o $TARGET? [s/N]: " confirm < /dev/tty
+    if [[ ! "$confirm" =~ ^[Ss]$ ]]; then
+        echo ""
+        echo "Desinstalação cancelada pelo usuário."
+        echo "Nenhuma alteração foi realizada."
+        exit 0
+    fi
+}
+
+# Função para calcular tamanho da pasta
+get_folder_size() {
+    if [ -d "${1:-}" ]; then
+        du -sh "$1" | cut -f1
+    else
+        echo "0K"
+    fi
+}
+
+# Remove configurações do bashrc
+remove_bashrc_entries() {
+    echo "Removendo configurações do .bashrc..."
+    local marker="# pythonman auto config"
+    
+    if grep -q "$marker" "$FILE_BASHRC"; then
+        # Cria backup antes de modificar
+        cp "$FILE_BASHRC" "${FILE_BASHRC}.backup-pythonman"
+        
+        # Remove as linhas relacionadas ao pythonman
+        sed -i "/$marker/d" "$FILE_BASHRC"
+        sed -i '/export PATH="$PATH:$HOME\/.pythonman"/d' "$FILE_BASHRC"
+        sed -i '/if \[ -f "$HOME\/.pythonman\/python_env" \]; then/,/fi/d' "$FILE_BASHRC"
+        
+        echo "Configurações removidas do .bashrc!"
+        echo "Backup salvo em: ${FILE_BASHRC}.backup-pythonman"
+    else
+        echo "Nenhuma configuração do pythonman encontrada no .bashrc"
+    fi
+    return 0
+}
+
+# Remove arquivos principais
+remove_main_files() {
+    echo "Removendo arquivos principais..."
+    
+    if [ -f "$DIR_PYTHONMAN/$TARGET" ]; then
+        rm -f "$DIR_PYTHONMAN/$TARGET"
+        echo "Removido: $DIR_PYTHONMAN/$TARGET"
+    else
+        echo "Arquivo não encontrado: $DIR_PYTHONMAN/$TARGET"
+    fi
+
+    if [ -L "$CURRENT_PYTHON" ]; then
+        rm -f "$CURRENT_PYTHON"
+        echo "Removido: $CURRENT_PYTHON"
+    fi
+
+    if [ -f "$PYTHON_ENV_FILE" ]; then
+        rm -f "$PYTHON_ENV_FILE"
+        echo "Arquivo removido: $PYTHON_ENV_FILE"
+    else
+        echo "Arquivo não encontrado: $PYTHON_ENV_FILE"
+    fi
+    return 0
+}
+
+# Remove versões do Python (opcional)
+remove_python_versions() {
+    echo "Verificando versões do Python..."
+    
+    if [ -d "$DIR_PYTHON_VERSIONS" ]; then
+        folder_size=$(get_folder_size "$DIR_PYTHON_VERSIONS")
+        echo "Tamanho da pasta de versões: $folder_size"
+        echo "Atenção! Esta operação é irreversível!"
+        
+        read -p "Deseja remover todas as versões do Python? [s/N]: " confirm_versions < /dev/tty
+        if [[ "$confirm_versions" =~ ^[Ss]$ ]]; then
+            read -p "Confirme digitando 'remover': " double_confirm < /dev/tty
+            if [ "$double_confirm" == "remover" ]; then
+                echo "Removendo todas as versões Python..."
+                rm -rf "$DIR_PYTHON_VERSIONS"
+                echo "Pasta de versões removida: $DIR_PYTHON_VERSIONS"
+                
+                # Remove pasta principal se estiver vazia
+                if [ -d "$DIR_PYTHONMAN" ] && [ -z "$(ls -A "$DIR_PYTHONMAN")" ]; then
+                    rm -rf "$DIR_PYTHONMAN"
+                    echo "Pasta principal removida: $DIR_PYTHONMAN"
+                fi
+            else
+                echo "Confirmação inválida. As versões do Python não foram removidas."
+            fi
+        else
+            echo "Pasta de versões mantida: $DIR_PYTHON_VERSIONS"
+        fi
+    else
+        echo "Pasta de versões não encontrada: $DIR_PYTHON_VERSIONS"
+    fi
+    return 0
+}
+
+# Função principal
+main() {
+    check_pythonman_exists
+    confirm_uninstall
+    remove_bashrc_entries
+    remove_main_files
+    remove_python_versions
+
+    echo ""
+    echo "--------------------------------------------"
+    echo "   Desinstalação concluída com sucesso !    "
+    echo "--------------------------------------------"
+    echo ""
+    echo "Recomendações:"
+    echo "1. Recarregue seu terminal com:"
+    echo "   source ~/.bashrc"
+    echo "2. Verifique se todas as entradas foram removidas"
+    echo ""
+    echo "Obrigado por utilizar o $TARGET!"
+    echo "Suporte: souzalb@proton.me"
+}
+
+# Executa desinstalação
+main
