@@ -192,7 +192,7 @@ install_version(){
     fi
     
     echo "Extraindo arquivo..."
-    if ! tar -xJf "$temp_dir/$temp_file" -C "$temp_dir"; then
+    if ! tar -xf "$temp_dir/$temp_file" -C "$temp_dir"; then
         echo "Erro: Falha ao extrair o arquivo!"
         rm -rf "$temp_dir"
         return 1
