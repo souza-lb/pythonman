@@ -207,31 +207,34 @@ install_version(){
     
     echo "Compilando Python versão: '$version' (isso pode demorar vários minutos)..."
     cd "$extracted_dir" || return 1
+
+    mkdir -p "$DIR_PYTHONMAN/log" || { echo "Erro: Falha ao criar diretório de log"; return 1; }
     
-    # if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations > /dev/null 2> $HOME/configure-errors.log; then
-    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/configure-errors.log; then
-        echo "Erro: Falha na configuração! Verifique: $HOME/$DIR_PYTHONMAN/log/configure-errors.log"
+    # if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations > /dev/null 2> $DIR_PYTHONMAN/log/configure-error-warning.log; then
+    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> $DIR_PYTHONMAN/log/configure-error-warning.log; then
+        echo "Erro: Falha na configuração! Verifique: $DIR_PYTHONMAN/log/configure-error-warning.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
     cores=$(nproc)
-    if ! make -j"$cores" > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/make-errors.log; then
-        echo "Erro: Falha na compilação! Verifique: $HOME/$DIR_PYTHONMAN/log/make-errors.log"
+    if ! make -j"$cores" > /dev/null 2> $DIR_PYTHONMAN/log/make-error-warning.log; then
+        echo "Erro: Falha na compilação! Verifique: $DIR_PYTHONMAN/log/make-error-warning.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
-    if ! make install > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/install-errors.log; then
-        echo "Erro: Falha na instalação! Verifique: $HOME/$DIR_PYTHONMAN/log/install-errors.log"
+    if ! make install > /dev/null 2> $DIR_PYTHONMAN/log/install-error-warning.log; then
+        echo "Erro: Falha na instalação! Verifique: $DIR_PYTHONMAN/log/install-error-warning.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
     rm -rf "$temp_dir"
+    rm -rf "$DIR_PYTHONMAN/log"
     
     echo "Python versão '$version' instalada com sucesso!"
     echo "Execute: 'pythonman use $version' para utilizar essa versão!"
