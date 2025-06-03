@@ -209,23 +209,23 @@ install_version(){
     cd "$extracted_dir" || return 1
     
     # if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations > /dev/null 2> $HOME/configure-errors.log; then
-    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> $HOME/configure-errors.log; then
-        echo "Erro: Falha na configuração! Verifique: $HOME/configure-errors.log"
+    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/configure-errors.log; then
+        echo "Erro: Falha na configuração! Verifique: $HOME/$DIR_PYTHONMAN/log/configure-errors.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
     cores=$(nproc)
-    if ! make -j"$cores" > /dev/null 2> $HOME/make-errors.log; then
-        echo "Erro: Falha na compilação! Verifique: $HOME/make-errors.log"
+    if ! make -j"$cores" > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/make-errors.log; then
+        echo "Erro: Falha na compilação! Verifique: $HOME/$DIR_PYTHONMAN/log/make-errors.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
-    if ! make install > /dev/null 2> $HOME/install-errors.log; then
-        echo "Erro: Falha na instalação! Verifique: $HOME/install-errors.log"
+    if ! make install > /dev/null 2> $HOME/$DIR_PYTHONMAN/log/install-errors.log; then
+        echo "Erro: Falha na instalação! Verifique: $HOME/$DIR_PYTHONMAN/log/install-errors.log"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
