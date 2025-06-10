@@ -140,6 +140,7 @@ disable_version(){
 # Instala uma nova versão
 install_version(){
     local source file_name temp_dir temp_file version extracted_dir
+    local LOG_SUFFIX LOG_CONFIGURE LOG_MAKE LOG_INSTALL
     
     source=${1:-}
     
@@ -205,39 +206,45 @@ install_version(){
         return 1
     fi
     
-    echo "Compilando Python versão: '$version' (isso pode demorar vários minutos)..."
-    cd "$extracted_dir" || return 1
-
     mkdir -p "$DIR_PYTHONMAN/log" || { echo "Erro: Falha ao criar diretório de log"; return 1; }
+
+    LOG_SUFFIX="_$(date +%s)_$$"
+    LOG_CONFIGURE="$DIR_PYTHONMAN/log/configure-error-warning$LOG_SUFFIX.log"
+    LOG_MAKE="$DIR_PYTHONMAN/log/make-error-warning$LOG_SUFFIX.log"
+    LOG_INSTALL="$DIR_PYTHONMAN/log/install-error-warning$LOG_SUFFIX.log"
     
-    # if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" --enable-optimizations > /dev/null 2> $DIR_PYTHONMAN/log/configure-error-warning.log; then
-    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> $DIR_PYTHONMAN/log/configure-error-warning.log; then
-        echo "Erro: Falha na configuração! Verifique: $DIR_PYTHONMAN/log/configure-error-warning.log"
+    echo "Compilando Python versão: '$version' (isso pode demorar alguns minutos)..."
+    cd "$extracted_dir" || return 1
+    
+    if ! ./configure --prefix="$DIR_PYTHON_VERSIONS/$version" > /dev/null 2> "$LOG_CONFIGURE"; then
+        echo "Erro: Falha na configuração! Verifique: $LOG_CONFIGURE"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
     cores=$(nproc)
-    if ! make -j"$cores" > /dev/null 2> $DIR_PYTHONMAN/log/make-error-warning.log; then
-        echo "Erro: Falha na compilação! Verifique: $DIR_PYTHONMAN/log/make-error-warning.log"
+    if ! make -j"$cores" > /dev/null 2> "$LOG_MAKE"; then
+        echo "Erro: Falha na compilação! Verifique: $LOG_MAKE"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
     
-    if ! make install > /dev/null 2> $DIR_PYTHONMAN/log/install-error-warning.log; then
-        echo "Erro: Falha na instalação! Verifique: $DIR_PYTHONMAN/log/install-error-warning.log"
+    if ! make install > /dev/null 2> "$LOG_INSTALL"; then
+        echo "Erro: Falha na instalação! Verifique: $LOG_INSTALL"
         rm -rf "$temp_dir"
         rm -rf "$DIR_PYTHON_VERSIONS/$version"
         return 1
     fi
+    
+    rm -f "$LOG_CONFIGURE" "$LOG_MAKE" "$LOG_INSTALL"
     
     rm -rf "$temp_dir"
-    rm -rf "$DIR_PYTHONMAN/log"
     
     echo "Python versão '$version' instalada com sucesso!"
     echo "Execute: 'pythonman use $version' para utilizar essa versão!"
+    return 0
 }
 
 # Remove uma versão
