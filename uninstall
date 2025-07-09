@@ -5,7 +5,7 @@
 # Autor: Leonardo Bruno
 # Contato: souzalb@proton.me
 # Versão: 1.0
-# Data: 01/06/2025
+# Data: 09/7/2025
 
 # Nome do arquivo alvo
 TARGET="pythonman"
@@ -24,6 +24,9 @@ FILE_BASHRC="$HOME/.bashrc"
 
 # Arquivo de ambiente python
 PYTHON_ENV_FILE="$DIR_PYTHONMAN/python_env"
+
+# Arquivo de repositório
+FILE_LINK_PYTHON="$DIR_PYTHONMAN/link-python.txt"
 
 # Mensagem inicial
 echo ""
@@ -102,6 +105,13 @@ remove_main_files() {
         echo "Removido: $DIR_PYTHONMAN/$TARGET"
     else
         echo "Arquivo não encontrado: $DIR_PYTHONMAN/$TARGET"
+    fi
+
+    if [ -f "$FILE_LINK_PYTHON" ]; then
+        rm -f "$FILE_LINK_PYTHON"
+        echo "Removido: $FILE_LINK_PYTHON"
+    else
+        echo "Arquivo não encontrado: $FILE_LINK_PYTHON"
     fi
 
     if [ -L "$CURRENT_PYTHON" ]; then
