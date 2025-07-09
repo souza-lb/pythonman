@@ -68,6 +68,8 @@ Versões Python disponíveis:
 ### ⬇️ Instalar uma versão
 ```bash
 pythonman install [URL/arquivo]
+# OU via repositório:
+pythonman repo [versão]
 ```
 
 **Exemplos:**
@@ -75,8 +77,11 @@ pythonman install [URL/arquivo]
 # Instalar via URL oficial
 pythonman install https://www.python.org/ftp/python/3.13.3/Python-3.13.3.tar.xz
 
+# Instalar via repositório (após atualizar lista)
+pythonman repo 3.13.3
+
 # Instalar versão alpha
-pythonman install https://www.python.org/ftp/python/3.14.0/Python-3.14.0a7.tar.xz
+pythonman repo 3.14.0a7
 
 # Instalar arquivo local
 pythonman install ~/Downloads/Python-3.13.3.tar.xz
@@ -84,6 +89,42 @@ pythonman install ~/Downloads/Python-3.13.3.tar.xz
 
 **Importante sobre compilação:**  
 A instalação envolve compilação do código fonte, o que pode levar vários minutos dependendo do seu sistema.
+
+### 🔄 Gerenciar Repositório de Versões
+
+```bash
+# Atualizar lista de links do repositório
+pythonman repo update
+
+# Listar versões disponíveis no repositório
+pythonman repo list
+
+# Instalar versão específica do repositório
+pythonman repo [versão]
+```
+
+**Exemplos:**
+```bash
+# Atualizar repositório
+pythonman repo update
+
+# Listar versões disponíveis
+pythonman repo list
+
+# Instalar versão 3.13.3 do repositório
+pythonman repo 3.13.3
+```
+
+Saída do `repo list`:
+```
+Versões disponíveis no repositório:
+------------------------------------------------------------------
+Versão       | Link
+------------------------------------------------------------------
+3.13.3       | https://www.python.org/ftp/python/3.13.3/Python-3.13.3.tar.xz
+3.14.0a7     | https://www.python.org/ftp/python/3.14.0/Python-3.14.0a7.tar.xz
+...
+```
 
 ### ⚡ Ativar uma versão
 ```bash
@@ -140,6 +181,8 @@ O pythonman organiza os arquivos em:
 │   ├── 3.10.6/
 │   ├── 3.11.4/
 │   └── current -> 3.10.6  # Link simbólico
+├── link-python.txt      # Lista de links do repositório
+├── log/                 # Logs de compilação
 └── python_env           # Configuração de ambiente
 ```
 
@@ -180,33 +223,69 @@ Para aplicar as mudanças no ambiente atual.
    (Verifique dependências de compilação)
    ```
 
+6. **Repositório não encontrado:**
+   ```
+   Erro: Repositório não encontrado!
+   Execute 'pythonman repo update' primeiro.
+   ```
+
+7. **Versão não encontrada no repositório:**
+   ```
+   Erro: Versão X.Y.Z não encontrada no repositório!
+   ```
+
+## ⚙️ Logs de Compilação
+Todos os processos de compilação geram logs detalhados em:
+```
+~/.pythonman/log/
+├── configure-error-warning_<timestamp>.log
+├── make-error-warning_<timestamp>.log
+└── install-error-warning_<timestamp>.log
+```
+Úteis para diagnóstico em caso de falhas na instalação.
+
+**Nota sobre operações simultâneas:**  
+O pythonman utiliza um sistema de lock para evitar múltiplas operações simultâneas. Se encontrar este erro:
+```
+Erro: Operação já em progresso (PID XXXX)
+```
+Aguarde a conclusão da operação anterior antes de tentar novamente.
+
 ---
 
 ## 🔄 Fluxo de trabalho típico
 
 ```mermaid
 graph TD
-    A[Instalar versão] --> B{Usar versão?}
-    B -->|Sim| C[ pythonman use X.Y.Z ]
-    B -->|Não| D[Listar versões]
-    C --> E[source ~/.bashrc]
-    D --> F[Escolher versão]
-    F --> C
+    A[Atualizar repositório] --> B[pythonman repo update]
+    B --> C{Instalar via?}
+    C -->|Repositório| D[pythonman repo versão]
+    C -->|Manual| E[pythonman install URL/arquivo]
+    D --> F{Usar versão?}
+    E --> F
+    F -->|Sim| G[ pythonman use X.Y.Z ]
+    F -->|Não| H[Listar versões]
+    G --> I[source ~/.bashrc]
+    H --> J[Escolher versão]
+    J --> G
 ```
 
 Passos detalhados:
-1. **Instalar uma nova versão do Python**: `pythonman install [URL]`
+1. **Atualizar repositório**: `pythonman repo update` (opcional, mas recomendado para instalações futuras)
+2. **Instalar uma nova versão do Python**:
+   - **Via repositório**: `pythonman repo [versão]`
+   - **Manual**: `pythonman install [URL/arquivo]`
    - Dependências de compilação serão instaladas automaticamente
    - Código fonte será compilado localmente
-2. **Decidir se deseja usar a versão imediatamente**:
+3. **Decidir se deseja usar a versão imediatamente**:
    - Se sim: ativar a versão com `pythonman use X.Y.Z`
    - Se não: listar versões com `pythonman list`
-3. **Para listagem de versões**:
+4. **Para listagem de versões**:
    - Escolher uma versão específica
    - Ativar com `pythonman use X.Y.Z`
-4. **Sempre após ativar/desativar**: `source ~/.bashrc`
-5. **Executar aplicações Python**
-6. **Quando necessário**:
+5. **Sempre após ativar/desativar**: `source ~/.bashrc`
+6. **Executar aplicações Python**
+7. **Quando necessário**:
    - Desativar versão atual: `pythonman disable`
    - Remover versões antigas: `pythonman remove [versão]`
 
